@@ -66,6 +66,7 @@ export class Mesh2MotionEngine {
   public transform_space_type: TransformSpace = TransformSpace.Global
 
   private readonly clock = new THREE.Clock()
+  public json_animation_mixer: THREE.AnimationMixer | undefined
 
   private environment_container: Group = new Group()
   private readonly eventListeners: EventListeners
@@ -344,6 +345,11 @@ export class Mesh2MotionEngine {
     // render/update functions in that
     if (this.process_step === ProcessStep.AnimationsListing) {
       this.animations_listing_step.frame_change(delta_time)
+    }
+
+    // update our custom animation mixer if it exists
+    if (this.json_animation_mixer !== undefined) {
+      this.json_animation_mixer.update(delta_time)
     }
 
     this.renderer.render(this.scene, this.camera)

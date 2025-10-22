@@ -69,6 +69,12 @@ export class UI {
   dom_animation_count: HTMLElement | null = null
   dom_animations_listing_count: HTMLElement | null = null
 
+  // JSON animation generation tools
+  dom_json_nav_button: HTMLAnchorElement | null = null
+  dom_json_tools: HTMLElement | null = null
+  dom_json_prompt_input: HTMLTextAreaElement | null = null
+  dom_generate_json_animation_button: HTMLButtonElement | null = null
+
 
   dom_build_version: HTMLElement | null = null
   dom_attribution_link: HTMLAnchorElement | null = null
@@ -164,6 +170,12 @@ export class UI {
     this.dom_export_button_hidden_link = document.querySelector('#download-hidden-link')
     this.dom_animation_count = document.querySelector('#animation-selection-count')
     this.dom_animations_listing_count = document.querySelector('#animation-listing-count')
+
+    // JSON animation generation tools
+    this.dom_json_nav_button = document.querySelector('#json-nav-button')
+    this.dom_json_tools = document.querySelector('#json-tools')
+    this.dom_json_prompt_input = document.querySelector('#json-prompt-input')
+    this.dom_generate_json_animation_button = document.querySelector('#generate-json-animation-button')
   }
 
   public hide_all_elements (): void {
@@ -181,6 +193,9 @@ export class UI {
     }
     if (this.dom_skinned_mesh_animation_tools != null) {
       this.dom_skinned_mesh_animation_tools.style.display = 'none'
+    }
+    if (this.dom_json_tools != null) {
+      this.dom_json_tools.style.display = 'none'
     }
   }
 }

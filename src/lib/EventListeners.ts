@@ -1,4 +1,6 @@
 import { type Mesh2MotionEngine } from '../Mesh2MotionEngine'
+import { JSONAnimationProcessor } from './processes/json-animation/JSONAnimationProcessor'
+import * as THREE from 'three'
 import { ModelPreviewDisplay } from './enums/ModelPreviewDisplay'
 import { ProcessStep } from './enums/ProcessStep'
 import { TransformSpace } from './enums/TransformSpace'
@@ -36,6 +38,42 @@ export class EventListeners {
     this.bootstrap.ui.dom_attribution_link?.addEventListener('click', (event: MouseEvent) => {
       event.preventDefault()
       this.bootstrap.show_contributors_dialog()
+    })
+
+    // clicking the JSON nav button
+    this.bootstrap.ui.dom_json_nav_button?.addEventListener('click', (event: MouseEvent) => {
+      event.preventDefault()
+      this.bootstrap.ui.hide_all_elements()
+      if (this.bootstrap.ui.dom_json_tools != null) {
+        this.bootstrap.ui.dom_json_tools.style.display = 'flex'
+      }
+    })
+
+    // clicking the generate animation button
+    this.bootstrap.ui.dom_generate_json_animation_button?.addEventListener('click', (event: MouseEvent) => {
+      event.preventDefault()
+      console.log('Generate animation button clicked!')
+
+      const armature = this.bootstrap.edit_skeleton_step.armature()
+      const skeleton = this.bootstrap.edit_skeleton_step.skeleton()
+
+      if (armature === undefined || skeleton === undefined) {
+        console.error('Armature or skeleton not found. Cannot generate animation.')
+        return
+      }
+
+      const processor = new JSONAnimationProcessor()
+      const clip = processor.run(skeleton)
+
+      // If the clip has tracks, play it
+      if (clip.tracks.length > 0) {
+        console.log('Generated clip, playing animation...', clip)
+        this.bootstrap.json_animation_mixer = new THREE.AnimationMixer(armature)
+        this.bootstrap.json_animation_mixer.stopAllAction()
+        this.bootstrap.json_animation_mixer.clipAction(clip).play()
+      } else {
+        console.warn('Generated clip has no tracks. Nothing to play.')
+      }
     })
 
     // listen for view helper changes
