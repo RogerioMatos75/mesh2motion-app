@@ -22,10 +22,12 @@ export class Generators {
   static get_contributors_list (): string {
     // Return a list of contributors
     return `
-    <div style="text-align: start">
-      <p><span style="font-size: 120%">Scott Petrovic</span> - Project Maintainer</p>
-      <p><span style="font-size: 120%">Quatnerius</span> - Human model, rig, and animations</p>
-    </div>
+      <p>Scott Petrovic: Project Maintainer</p>
+      <p>Quaternius: Human model, rig, and animations. <a href="http://quaternius.com/" target="_blank" rel="noopener noreferrer">quaternius.com</a></p>
+      <hr/>
+      <p>For instructions on submitting animations or contributing to the project, see the 
+        <a href="https://github.com/scottpetrovic/mesh2motion-app/blob/main/CONTRIBUTOR.md" target="_blank">Contribution Guide</a>.
+      </p>
     `
   }
 
@@ -37,7 +39,8 @@ export class Generators {
     const floor_material = new MeshPhongMaterial({
       color: floor_color,
       wireframe: false,
-      transparent: false,
+      transparent: true,
+      opacity: 0.7,
       shininess: 0.0,
       specular: 0.0
     })
@@ -48,6 +51,7 @@ export class Generators {
     floor_mesh.rotation.x = -Math.PI / 2
     floor_mesh.position.y = -0.01
     floor_mesh.receiveShadow = true
+    floor_mesh.renderOrder = -1 // fix to help put the floor behind the skeleton helper
 
     // xyz axes helper display
     const axes_helper = new AxesHelper(0.3)

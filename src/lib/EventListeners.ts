@@ -1,10 +1,11 @@
-import { type Bootstrap } from '../script'
+import { type Mesh2MotionEngine } from '../Mesh2MotionEngine'
 import { ModelPreviewDisplay } from './enums/ModelPreviewDisplay'
 import { ProcessStep } from './enums/ProcessStep'
+import { TransformSpace } from './enums/TransformSpace'
 import { Utility } from './Utilities'
 
 export class EventListeners {
-  constructor (private readonly bootstrap: Bootstrap) {}
+  constructor (private readonly bootstrap: Mesh2MotionEngine) {}
 
   public addEventListeners (): void {
     // monitor theme changes
@@ -12,7 +13,13 @@ export class EventListeners {
       this.bootstrap.regenerate_floor_grid()
     })
 
+    this.bootstrap.load_skeleton_step.addEventListener('skeletonLoaded', () => {
+      this.bootstrap.edit_skeleton_step.load_original_armature_from_model(this.bootstrap.load_skeleton_step.armature())
+      this.bootstrap.process_step = this.bootstrap.process_step_changed(ProcessStep.EditSkeleton)
+    })
+
     // Listen for skeleton transformation events to update UI and visuals
+    // this can happen with undo/redo system
     this.bootstrap.edit_skeleton_step.addEventListener('skeletonTransformed', () => {
       // Update skeleton helper if it exists
       if (this.bootstrap.skeleton_helper !== undefined) {
@@ -93,7 +100,7 @@ export class EventListeners {
 
     // rotate model after loading it in to orient it correctly
     this.bootstrap.ui.dom_rotate_model_x_button?.addEventListener('click', () => {
-  this.bootstrap.load_model_step.rotate_model_geometry('x', 90)
+      this.bootstrap.load_model_step.rotate_model_geometry('x', 90)
     })
 
     this.bootstrap.ui.dom_rotate_model_y_button?.addEventListener('click', () => {
@@ -160,6 +167,17 @@ export class EventListeners {
       }
 
       this.bootstrap.changed_transform_controls_mode(radio_button_selected)
+    })
+
+    this.bootstrap.ui.dom_transform_space_radio_group?.addEventListener('change', (event: Event) => {
+      const radio_button_selected: string | null = event.target?.value
+
+      if (radio_button_selected === null) {
+        console.warn('Null radio button selected for transform space change')
+        return
+      }
+
+      this.bootstrap.changed_transform_controls_space(Utility.enum_from_value(radio_button_selected, TransformSpace))
     })
 
     // changing the 3d model preview while editing the skeleton bones

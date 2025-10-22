@@ -5,7 +5,8 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 import {
   type AnimationClip, AnimationMixer, Quaternion, Vector3, type SkinnedMesh, type QuaternionKeyframeTrack,
-  type KeyframeTrack, type AnimationAction, type Object3D, Bone
+  type KeyframeTrack, type AnimationAction, type Object3D, Bone,
+  Skeleton
 } from 'three'
 
 import { SkeletonType } from '../../enums/SkeletonType.ts'
@@ -28,50 +29,25 @@ export class StepAnimationsListing extends EventTarget {
   private current_playing_index: number = 0
   private skeleton_type: SkeletonType = SkeletonType.Human
 
+  private animations_file_path: string = 'animations/'
+
+  // retrieved from load skeleton step
+  // we will use this to scale all position animation keyframes (uniform scale)
+  private skeleton_scale: number = 1.0
+
   private _added_event_listeners: boolean = false
 
   // Animation search functionality
   public animation_search: AnimationSearch | null = null
 
-  // -z will bring hip bone down
-  private hip_bone_offset: Vector3 = new Vector3(0, 0, 0) // -z will bring hip bone down. Helps set new base hip position
-  private hip_bone_scale_factor_z: number = 1.0 // this is used to scale the hip bone position for animations
+  public set_animations_file_path (path: string): void {
+    this.animations_file_path = path
+  }
 
   /**
    * The amount to raise the arms.
    */
   private warp_arm_amount: number = 0.0
-
-  // the human model has a hip bone that needs position changes applied
-  // This will be for animations like falling. We need to capture the offset between
-  // the original position and the new position from our edited armature
-  public calculate_hip_bone_offset (original_armature: Object3D, edited_armature: Object3D): void {
-    const original_hip_bone: Bone = this.find_bone_from_armature(original_armature, 'DEF-hips')
-    const edited_hip_bone: Bone = this.find_bone_from_armature(edited_armature, 'DEF-hips')
-    this.hip_bone_offset = this.calculate_position_offset(original_hip_bone.position, edited_hip_bone.position)
-
-    // calculate the scale factor for the animation clips
-    // this should take the distance between the original and edited armature
-    // and divide it by the original armature hip bone position
-    this.hip_bone_scale_factor_z = edited_hip_bone.position.z / original_hip_bone.position.z
- 
-    // small T-pose offset that somehow is getting lost
-    this.hip_bone_offset = this.hip_bone_offset.sub(new Vector3(0, 0, -0.04))
-  }
-
-  private find_bone_from_armature (armature: Object3D, bone_name: string): Bone | null {
-    let found_bone: Bone | null = null
-    armature.traverse((object: Object3D) => {
-      if (found_bone === null && object.name === bone_name && object instanceof Bone) {
-        found_bone = object
-      }
-    })
-    return found_bone
-  }
-
-  private calculate_position_offset (position_1: Vector3, position_2: Vector3): Vector3 {
-    return new Vector3(position_1.x - position_2.x, position_1.y - position_2.y, position_1.z - position_2.z)
-  }
 
   private has_added_event_listeners: boolean = false
 
@@ -82,7 +58,9 @@ export class StepAnimationsListing extends EventTarget {
     this.theme_manager = theme_manager
   }
 
-  public begin (skeleton_type: SkeletonType): void {
+  public begin (skeleton_type: SkeletonType, skeleton_scale: number): void {
+    this.skeleton_scale = skeleton_scale
+
     if (this.ui.dom_current_step_index != null) {
       this.ui.dom_current_step_index.innerHTML = '4'
     }
@@ -119,8 +97,6 @@ export class StepAnimationsListing extends EventTarget {
     this.skinned_meshes_to_animate = []
     this.animation_mixer = new AnimationMixer()
     this.current_playing_index = 0
-    this.hip_bone_offset = new Vector3(0, 0, 0)
-    this.hip_bone_scale_factor_z = 1.0
     this.animation_player.clear_animation()
   }
 
@@ -148,15 +124,25 @@ export class StepAnimationsListing extends EventTarget {
     let animations_to_load_filepaths: string[] = []
     switch (this.skeleton_type) {
       case SkeletonType.Human:
-        animations_to_load_filepaths = ['animations/human-base-animations.glb', 'animations/human-addon-animations.glb']
+        animations_to_load_filepaths = [this.animations_file_path + 'human-base-animations.glb', 
+          this.animations_file_path + 'human-addon-animations.glb']
         break
       case SkeletonType.Quadraped:
-        animations_to_load_filepaths = ['animations/quad-creature-animations.glb']
+        animations_to_load_filepaths = [this.animations_file_path + 'quad-creature-animations.glb']
         break
       case SkeletonType.Bird:
-        animations_to_load_filepaths = ['animations/bird-animations.glb']
+        animations_to_load_filepaths = [this.animations_file_path + 'bird-animations.glb']
         break
+      case SkeletonType.Dragon:
+        animations_to_load_filepaths = [this.animations_file_path + 'dragon-animations.glb']
+        break
+      default:
+        console.error('Unknown skeleton type for loading animations. Add GLB file to animation listing process')
     }
+
+    // if we call this load animations externally (like marketing page)
+    // we might need to modify the location paths for these to reference the correct part
+
 
     this.gltf_animation_loader = new GLTFLoader()
 
@@ -179,8 +165,8 @@ export class StepAnimationsListing extends EventTarget {
         // this mutates the cloned_anims, so no need for returning anything
         Utility.clean_track_data(cloned_anims, true)
 
-        // apply hip bone offset
-        this.apply_hip_bone_offset(cloned_anims)
+        // apply scaling to position keyframes if we scaled skeleton up or down
+        this.apply_skeleton_scale_to_position_keyframes(cloned_anims)
 
         // we did all the processing needed, so add them
         // to the full list of animation clips
@@ -232,17 +218,18 @@ export class StepAnimationsListing extends EventTarget {
     this.ui.dom_animations_listing_count.innerHTML = animation_length_string + ' animations'
   }
 
-  private apply_hip_bone_offset (animation_clips: AnimationClip[]): void {
-    // update the position keyframes for the hips bone
-    // this will be used for animations like falling
+  // when we scaled the skeleton itself near the beginning, we kept track of that
+  // this scaling will affect position keyframes since they expect the original skeleton scale
+  // this will fix any issues with position keyframes not matching the current skeleton scale
+  private apply_skeleton_scale_to_position_keyframes (animation_clips: AnimationClip[]): void {
     animation_clips.forEach((animation_clip: AnimationClip) => {
       animation_clip.tracks.forEach((track: KeyframeTrack) => {
-        if (track.name.includes('hips.position')) {
+        if (track.name.includes('.position')) {
           const values = track.values
           for (let i = 0; i < values.length; i += 3) {
-            values[i] = values[i] - this.hip_bone_offset.x
-            values[i + 1] = values[i + 1] - this.hip_bone_offset.y
-            values[i + 2] = values[i + 2] * this.hip_bone_scale_factor_z
+            values[i] *= this.skeleton_scale
+            values[i + 1] *= this.skeleton_scale
+            values[i + 2] *= this.skeleton_scale
           }
         }
       })

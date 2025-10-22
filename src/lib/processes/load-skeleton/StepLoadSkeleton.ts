@@ -16,8 +16,32 @@ export class StepLoadSkeleton extends EventTarget {
   private _added_event_listeners: boolean = false
   private readonly _main_scene: Scene
 
+  // used to help scale animations later
+  // this is useful since position keyframes will need to be scaled
+  // to prevent large offsets
+  private skeleton_scale_percentage: number = 1.0
+
+  // this was invented since this value is stored on a DOM element
+  // this helps the marketing page set the type and doesn't rely on a DOM value
+  // probably could refactor this a bit to be cleaner later.
+  private manual_set_skeleton_type: SkeletonType = SkeletonType.None
+
   public skeleton_type (): SkeletonType {
+    if (this.skeleton_file_path() === SkeletonType.None) {
+      return this.manual_set_skeleton_type
+    }
+
     return this.skeleton_file_path() // this is actually the type/filepath combo
+  }
+
+  public set_skeleton_type (type: SkeletonType): void {
+    this.manual_set_skeleton_type = type
+  }
+
+  // The edit skeleton step will use this to scale the skeleton when loading editable skeleton
+  // animations listing will use this to scale all position keyframes
+  public skeleton_scale (): number {
+    return this.skeleton_scale_percentage
   }
 
   constructor (main_scene: Scene) {
@@ -47,7 +71,8 @@ export class StepLoadSkeleton extends EventTarget {
     // when we come back to this step, there is a good chance we already selected a skeleton
     // so just use that and load the preview right when we enter this step
     if (!this.has_select_skeleton_ui_option()) {
-      add_preview_skeleton(this._main_scene, this.skeleton_file_path(), this.hand_skeleton_type()).catch((err) => {
+      add_preview_skeleton(this._main_scene, this.skeleton_file_path(),
+        this.hand_skeleton_type(), this.skeleton_scale_percentage).catch((err) => {
         console.error('error loading preview skeleton: ', err)
       })
     }
@@ -92,6 +117,8 @@ export class StepLoadSkeleton extends EventTarget {
         return SkeletonType.Bird
       case 'select-skeleton':
         return SkeletonType.None
+      case 'dragon':
+        return SkeletonType.Dragon
       default:
         console.error('unknown skeleton type selected: ', skeleton_file)
         return SkeletonType.Error
@@ -108,8 +135,8 @@ export class StepLoadSkeleton extends EventTarget {
     if (this.ui.dom_skeleton_drop_type !== null) {
       this.ui.dom_skeleton_drop_type.addEventListener('change', () => {
         // get selected value from skeleton options
-        const skeleton_selection = this.ui.dom_skeleton_drop_type.options
-        this.skeleton_t = skeleton_selection[skeleton_selection.selectedIndex].value as SkeletonType
+        // const skeleton_selection = this.ui.dom_skeleton_drop_type.options
+        // this.skeleton_t = skeleton_selection[skeleton_selection.selectedIndex].value as SkeletonType
 
         // hand options only apply to human skeletons, so we need to show/hide when skeleton type changes
         this.toggle_ui_hand_skeleton_options()
@@ -119,9 +146,13 @@ export class StepLoadSkeleton extends EventTarget {
           this.ui.dom_skeleton_drop_type?.options.remove(0)
         }
 
+        // show the scale skeleton options in case they are hidden
+        this.ui.dom_scale_skeleton_controls!.style.display = 'flex'
+
         // load the preview skeleton
         // need to get the file name for the correct skeleton
-        add_preview_skeleton(this._main_scene, this.skeleton_file_path(), this.hand_skeleton_type()).then(() => {
+        // we pass the skeleton scale in the case where we set a skeleton, change scale, then change the skeleton
+        add_preview_skeleton(this._main_scene, this.skeleton_file_path(), this.hand_skeleton_type(), this.skeleton_scale()).then(() => {
           // enable the ability to progress to next step
           this.allow_proceeding_to_next_step(true)
         }).catch((err) => {
@@ -137,52 +168,75 @@ export class StepLoadSkeleton extends EventTarget {
           return
         }
 
-        // load skeleton from GLB file
-        this.loader.load(this.skeleton_file_path(), (gltf: GLTFResult) => {
-          // traverse scene and find first bone object
-          // we will go to the parent and mark that as the original armature
-          let armature_found = false
-          let original_armature: Object3D = new Object3D()
-
-          gltf.scene.traverse((child: Object3D) => {
-            // Note: three.js removes punctuation characters from names object names like `-` and `.` for sanitization
-            // Our 3D source files will need to account fo this if we are relying on that later for parsing
-            // https://discourse.threejs.org/t/avoid-dots-and-colons-being-deleted-from-models-name/15304/2
-            if (child.type === 'Bone' && !armature_found) {
-              armature_found = true
-
-              if (child.parent != null) {
-                original_armature = child.parent
-              } else {
-                console.warn('could not find armature parent while loading skeleton')
-              }
-            }
-          })
-
-          this.loaded_armature = original_armature.clone()
-          this.loaded_armature.name = 'Loaded Armature'
-
-          // Apply hand skeleton modifications for human skeletons
-          if (this.skeleton_file_path() === SkeletonType.Human) {
-            const helper = new HandHelper()
-            helper.modify_hand_skeleton(this.loaded_armature, this.hand_skeleton_type())
-          }
-
-          // reset the armature to 0,0,0 in case it is off for some reason
-          this.loaded_armature.position.set(0, 0, 0)
-          this.loaded_armature.updateWorldMatrix(true, true)
-
-          this.dispatchEvent(new CustomEvent('skeletonLoaded', { detail: this.loaded_armature }))
-        })
+        // add back loading information here
+        this.load_skeleton_file(this.skeleton_file_path())
       })
     }// end if statement
 
     // when hand skeleton type changes. update the preview skeleton
     this.ui.dom_hand_skeleton_selection?.addEventListener('change', () => {
       // rebuild the preview skeleton with the new hand skeleton type
-      add_preview_skeleton(this._main_scene, this.skeleton_file_path(), this.hand_skeleton_type()).catch((err) => {
+      // make sure we keep existing scale if we made a change to that
+      add_preview_skeleton(this._main_scene, this.skeleton_file_path(), this.hand_skeleton_type(), this.skeleton_scale()).catch((err) => {
         console.error('error loading preview skeleton: ', err)
       })
+    })
+
+    // scale skeleton controls
+    this.ui.dom_scale_skeleton_input?.addEventListener('input', (event) => {
+      // range sliders have rounding errors, so we round the value to avoid issues
+      this.skeleton_scale_percentage = parseFloat((event.target as HTMLInputElement).value)
+
+      const display_value: string = Math.round(this.skeleton_scale_percentage * 100).toString() + '%'
+      this.ui.dom_scale_skeleton_percentage_display!.textContent = display_value
+
+      // re-add the preview skeleton with the new scale
+      add_preview_skeleton(this._main_scene, this.skeleton_file_path(), this.hand_skeleton_type(), this.skeleton_scale_percentage).catch((err) => {
+        console.error('error loading preview skeleton: ', err)
+      })
+    })
+  }
+
+  public load_skeleton_file (file_path: string): void {
+    // load skeleton from GLB file
+    this.loader.load(file_path, (gltf: GLTFResult) => {
+      // traverse scene and find first bone object
+      // we will go to the parent and mark that as the original armature
+      let armature_found = false
+      let original_armature: Object3D = new Object3D()
+
+      gltf.scene.traverse((child: Object3D) => {
+        // Note: three.js removes punctuation characters from names object names like `-` and `.` for sanitization
+        // Our 3D source files will need to account fo this if we are relying on that later for parsing
+        // https://discourse.threejs.org/t/avoid-dots-and-colons-being-deleted-from-models-name/15304/2
+        if (child.type === 'Bone' && !armature_found) {
+          armature_found = true
+
+          if (child.parent != null) {
+            original_armature = child.parent
+          } else {
+            console.warn('could not find armature parent while loading skeleton')
+          }
+        }
+      })
+
+      this.loaded_armature = original_armature.clone()
+      this.loaded_armature.name = 'Loaded Armature'
+
+      // Apply hand skeleton modifications for human skeletons
+      if (this.skeleton_file_path() === SkeletonType.Human) {
+        const helper = new HandHelper()
+        helper.modify_hand_skeleton(this.loaded_armature, this.hand_skeleton_type())
+      }
+
+      // reset the armature to 0,0,0 in case it is off for some reason
+      this.loaded_armature.position.set(0, 0, 0)
+      this.loaded_armature.updateWorldMatrix(true, true)
+
+      // scale the armature to what we picked using the scale slider/preview
+      this.loaded_armature.scale.set(this.skeleton_scale(), this.skeleton_scale(), this.skeleton_scale())
+
+      this.dispatchEvent(new CustomEvent('skeletonLoaded', { detail: this.loaded_armature }))
     })
   }
 
@@ -196,8 +250,27 @@ export class StepLoadSkeleton extends EventTarget {
     btn.disabled = !allow // disable when not allowed
   }
 
+  // returns a skeleton object that has been baked (applied) for scale 
   public armature (): Object3D<Object3DEventMap> {
-    return this.loaded_armature
+    return this.bake_scale_for_armature(this.loaded_armature)
+  }
+
+  // this does not mutate armature that goes in
+  // update all positions for bones and resets scale to 1
+  private bake_scale_for_armature (armature: Object3D): Object3D {
+    const scale = armature.scale.x // assumes uniform scale
+    if (scale === 1) return armature.clone() // no changes. just return existing skeleton
+
+    const cloned_armature: Object3D = armature.clone()
+    cloned_armature.traverse((obj) => {
+      if (obj instanceof Object3D && obj !== cloned_armature) {
+        obj.position.multiplyScalar(scale)
+      }
+    })
+    cloned_armature.scale.set(1, 1, 1)
+    cloned_armature.updateMatrixWorld(true)
+
+    return cloned_armature
   }
 
   private toggle_ui_hand_skeleton_options (): void {
