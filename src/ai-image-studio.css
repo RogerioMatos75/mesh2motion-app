@@ -1,0 +1,263 @@
+/* AI Image Studio specific styles */
+
+/* Use a more specific class for the modal to avoid conflicts */
+.ai-studio-modal .modal-dialog-content {
+    max-width: 90vw;
+    width: 1200px; /* Default width */
+    text-align: left;
+    height: 90vh;
+    display: flex;
+    padding: 0;
+    background: var(--bg-primary);
+    position: relative; /* Added for positioning context */
+}
+
+.ai-studio-container {
+    display: flex;
+    height: 100%;
+    width: 100%;
+    font-family: 'Jost', sans-serif;
+    color: var(--text-primary);
+}
+
+.ai-studio-left-panel {
+    width: 380px;
+    background-color: var(--bg-alternate);
+    padding: 16px 24px;
+    display: flex;
+    flex-direction: column;
+    overflow: auto hidden;
+    border-right: 1px solid var(--bg-tertiary);
+    flex-shrink: 0;
+    box-sizing: border-box;
+}
+
+.ai-studio-right-panel {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 32px;
+    background-color: var(--bg-primary);
+}
+
+.ai-studio-panel-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: var(--text-primary);
+}
+
+.ai-studio-panel-subtitle {
+    font-size: 14px;
+    color: var(--text-alternate);
+    margin-bottom: 12px;
+}
+
+.ai-studio-section-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.ai-studio-prompt-input {
+    width: 100%;
+    height: 100px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--bg-tertiary);
+    border-radius: 8px;
+    padding: 12px;
+    color: var(--text-primary);
+    resize: none;
+    margin-bottom: 16px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    box-sizing: border-box;
+}
+
+.ai-studio-prompt-input:focus {
+    outline: none;
+    border-color: var(--button-primary-bg);
+    box-shadow: 0 0 0 3px var(--button-shadow-color);
+}
+
+.ai-studio-mode-toggle {
+    display: flex;
+    margin-bottom: 24px;
+    background-color: var(--bg-primary);
+    border-radius: 8px;
+    padding: 4px;
+}
+
+.ai-studio-mode-btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background-color: transparent;
+    color: var(--text-alternate);
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.ai-studio-mode-btn.active {
+    background-color: var(--button-primary-bg);
+    color: white;
+}
+
+.ai-studio-functions-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.ai-studio-function-card {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--bg-tertiary);
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+.ai-studio-function-card:hover {
+    background-color: var(--bg-tertiary);
+}
+
+.ai-studio-function-card.active {
+    border-color: var(--button-primary-bg);
+    background-color: var(--bg-alternate);
+}
+
+.ai-studio-function-card .icon { font-size: 20px; margin-bottom: 4px; }
+.ai-studio-function-card .name { font-size: 12px; font-weight: 500; }
+
+.ai-studio-upload-area {
+    border: 2px dashed var(--bg-tertiary);
+    border-radius: 8px;
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.3s, background-color 0.3s;
+    display: none; /* Hidden by default */
+}
+
+.ai-studio-upload-area:hover {
+    border-color: var(--button-primary-bg);
+    background-color: var(--bg-alternate);
+}
+
+.ai-studio-upload-area .icon { font-size: 32px; margin-bottom: 12px; }
+.ai-studio-upload-area .text { font-weight: 600; }
+.ai-studio-upload-area .subtext { font-size: 12px; color: var(--text-alternate); }
+.ai-studio-image-preview { display: none; max-width: 100%; max-height: 150px; border-radius: 8px; margin-top: 16px; }
+
+.ai-studio-generate-btn {
+    width: 100%;
+    margin-top: auto; /* Pushes button to the bottom */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+/* Inherit general button styles from styles.css */
+.ai-studio-generate-btn .spinner {
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid var(--button-primary-bg);
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    animation: ai-studio-spin 1s linear infinite;
+    display: none;
+    margin-right: 10px;
+}
+
+@keyframes ai-studio-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+.ai-studio-result-placeholder { 
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: var(--text-alternate);
+    width: 100%;
+    height: 100%;
+}
+.ai-studio-result-placeholder-icon { font-size: 64px; margin-bottom: 16px; }
+
+.ai-studio-loading-container { text-align: center; display: none; }
+.ai-studio-loading-spinner {
+    border: 5px solid var(--bg-tertiary);
+    border-top: 5px solid var(--button-primary-bg);
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: ai-studio-spin 1.5s linear infinite;
+    margin: 0 auto 20px;
+}
+.ai-studio-loading-text { font-size: 18px; color: var(--text-alternate); }
+
+.ai-studio-image-container { display: none; text-align: center; position: relative; }
+.ai-studio-generated-image { max-width: 100%; max-height: calc(90vh - 100px); border-radius: 8px; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+
+.ai-studio-image-actions {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 12px;
+    background-color: rgba(0,0,0,0.6);
+    padding: 8px 16px;
+    border-radius: 50px;
+}
+.ai-studio-action-btn { background: none; border: none; color: white; font-size: 20px; cursor: pointer; transition: color 0.3s; }
+.ai-studio-action-btn:hover { color: var(--button-primary-bg); }
+
+/* Modal for API Key */
+.ai-studio-api-key-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000; /* Higher than the main modal */
+}
+.ai-studio-api-key-modal {
+    background-color: var(--bg-alternate);
+    padding: 32px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    text-align: center;
+    border: 1px solid var(--bg-tertiary);
+}
+.ai-studio-api-key-modal h2 { font-size: 22px; margin-bottom: 12px; color: var(--text-primary); }
+.ai-studio-api-key-modal p { color: var(--text-alternate); margin-bottom: 24px; }
+.ai-studio-api-key-input {
+    width: 100%;
+    padding: 12px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--bg-tertiary);
+    border-radius: 8px;
+    color: var(--text-primary);
+    margin-bottom: 24px;
+    box-sizing: border-box;
+}
+.ai-studio-api-key-save-btn {
+    width: 100%;
+}
+
+/* Positioning for the generic close button within the AI Studio modal */
+.ai-studio-modal .modal-dialog-close {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+    margin-top: 0;
+}

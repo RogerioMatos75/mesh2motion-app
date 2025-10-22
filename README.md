@@ -59,8 +59,41 @@ I don't expect to be receiving money for working on this, but I am also not the 
 
 <img src="./venmo.png" alt="Venmo Animator Fund" width="400"/>
 
+## O Que Você Pode Criar
 
+o pré-requisito essencial é ter um modelo 3D com um esqueleto (skeleton/rig/armature) já definido e nomeado corretamente.
+Vamos detalhar esse fluxo que você imaginou, porque ele é brilhante:
 
+1. O Ponto de Partida: O Modelo "T-Pose"
+O Que é? Você começa com um arquivo .glb que contém um modelo em uma pose neutra, geralmente a "T-Pose" (braços esticados para os lados).
+O Esqueleto Interno: O mais importante é que, dentro desse modelo, existe uma hierarquia de "ossos" digitais. Pense nisso como uma marionete. Cada osso tem um nome único (ex: upper_arm_L, head, spine_01).
+"Skinning": O modelo 3D (a "pele" ou "malha") está associado a esses ossos. Quando um osso se move, ele deforma a parte da malha que está conectada a ele.
+Isso é exatamente o que você descreveu. Tendo esse modelo "pronto para animar", o resto do processo se torna possível.
+
+2. A "Receita" do Movimento: O JSON
+Aqui entra a sua intuição sobre o Blender e o Python. O princípio é o mesmo. Em vez de um script Python, a IA geraria um arquivo de instruções, que poderia ser um JSON.
+Esse JSON não conteria o modelo, mas sim a "receita" do movimento. Ele seria uma lista de comandos para os ossos do esqueleto ao longo do tempo. Um exemplo simplificado para fazer um personagem acenar seria:
+code
+JSON
+{
+  "animationName": "Wave_Hand",
+  "duration": 2.0, // A animação dura 2 segundos
+  "tracks": [
+    {
+      "boneName": "right_forearm", // O alvo é o osso do antebraço direito
+      "property": "rotation",     // Vamos animar a rotação
+      "keyframes": [
+        // [tempo_em_segundos, valor_rotacao_x, valor_rotacao_y, valor_rotacao_z]
+        [0.0, 0, 0, 0],       // Posição inicial
+        [0.5, 0, 0, -45],     // Gira para um lado
+        [1.0, 0, 0, 45],      // Gira para o outro lado
+        [1.5, 0, 0, -45],     // Repete
+        [2.0, 0, 0, 0]        // Volta à posição inicial
+      ]
+    }
+    // ...poderia haver outras "tracks" para outros ossos...
+  ]
+}
 
 
 
